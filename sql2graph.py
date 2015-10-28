@@ -1,9 +1,17 @@
-# See:
-# http://groups.google.com/group/sqlparse/browse_thread/thread/b0bd9a022e9d4895
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from sqlparse.sql import IdentifierList, Identifier
 from sqlparse import parse
 from sqlparse.tokens import (Comment, Keyword, Name, DML)
+
+import click
+
+import pyorient
+from pyorient.exceptions import (
+    PyOrientConnectionException,
+    PyOrientSecurityAccessException
+)
 
 
 def is_subselect(parsed):
@@ -138,3 +146,47 @@ class SQLParser():
     def get_fields_from(self, table_name):
         return self.get_fields(table_name)
 
+
+class GraphDB():
+
+    def __init__(self, host='127.0.0.1', port=2424, user=None, password=None, database='sql2graph'):
+
+        self.client = pyorient.OrientDB(host, port)
+        self.session_id = self.client.connect(user, password)
+        self.database_name = database
+
+    def db_exists(self):
+        return self.client.db_exists(self.database_name)
+
+    def db_create(self):
+        self.client.db_create(self.database_name)
+
+
+@click.command()
+@click.option('--port', default=2424, help="Puerto para conectarse a OrientDB")
+@click.option('--user', help="Nombre de usuario de acceso a OrientDB", required=True)
+@click.option('--password', prompt="Contraseña OrientDB", hide_input=True)
+@click.option('--database', default="sql2graph", help="Nombre de base de datos en orientdb")
+def init(host='127.0.0.1', port=2424, user=None, password=None, database='sql2graph'):
+    click.echo('Contectando a %s@%s/%s' % (user,host,database))
+
+    try:
+        graphdb  = GraphDB(host=host, port=port, user=user, password=password, database=database)
+        if not graphdb.db_exists():
+            click.echo('No existe base de datos %s ' % database)
+            if(click.confirm(u'¿Deseas crearla?')):
+                click.echo('Creando...')
+                graphdb.db_create();
+            else:
+                click.echo('Bye.')
+                return
+        # Base creada comenzar a procesar los querys
+        click.echo('Procesando...')
+
+    except PyOrientConnectionException:
+        click.echo('Error al intentar conectarse a OrientDB', err=True)
+    except PyOrientSecurityAccessException:
+        click.echo(u'No se pudo establecer conexión con los datos proporcionados', err=True)
+
+if __name__ == "__main__":
+   init()
