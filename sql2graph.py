@@ -199,6 +199,7 @@ class GraphDB():
         print('Vertex {}'.format(vertex))
         edges = [
             'has_table',
+            'has_query',
             'uses_database',
             'uses_field',
             'uses_table',
@@ -208,6 +209,36 @@ class GraphDB():
             self.db_create_class(e, 'E')
 
         print('Edges {}'.format(edges))
+
+    def save(self, graph_objects):
+        for graph_object in graph_objects:
+            path = graph_object.get('path')
+            self.client.db_open(self.database_name, self.user, self.password)
+            file_records = self.client.command('insert into File set path ="{0}"'.format(path))
+            # print(file_records[0]._rid)
+            for query in graph_object.get('querys'):
+                if query.get('query'):
+                    query_records = self.client.command('insert into Query set statement = "{0}"'.format(query.get('query')))
+                    self.client.command('create edge has_query from {0} to {1}'.format(file_records[0]._rid, query_records[0]._rid))
+
+                    database_records = []
+                    for database in query.get('databases'):
+                        database_records = self.client.command('insert into Database set name = "{0}"'.format(database))
+                        self.client.command('create edge uses_database from {0} to {1}'.format(query_records[0]._rid, database_records[0]._rid))
+
+                    for table in query.get('tables_with_fields'):
+                        table_records = self.client.command('insert into Table set name = "{0}"'.format(table[0]))
+                        self.client.command('create edge uses_table from {0} to {1}'.format(query_records[0]._rid, table_records[0]._rid))
+                        if(database_records):
+                            self.client.command('create edge has_table from {0} to {1}'.format(database_records[0]._rid, table_records[0]._rid))
+
+                        fields = query.get('tables_with_fields')[table]
+                        for field in fields:
+                            field_records = self.client.command('insert into Field set name = "{0}"'.format(field))
+                            self.client.command('create edge has_field from {0} to {1}'.format(table_records[0]._rid, field_records[0]._rid))
+                            self.client.command('create edge uses_field from {0} to {1}'.format(query_records[0]._rid, field_records[0]._rid))
+
+
 
 @click.command()
 @click.option('--host', default='127.0.0.1', help='OrientDB server')
@@ -231,7 +262,7 @@ def init(host='127.0.0.1', port=2424, user=None, password=None, database='sql2gr
                 return
         # Base creada comenzar a procesar los querys
         click.echo('Procesando...')
-        # graphdb.initialize()
+        graphdb.initialize()
 
         click.echo('Leyendo archivos: ')
         p = Path(path)
@@ -263,7 +294,8 @@ def init(host='127.0.0.1', port=2424, user=None, password=None, database='sql2gr
 
             graph_objects.append(graph_object)
 
-        print(graph_objects)
+        graphdb.save(graph_objects)
+        click.echo('Done!')
 
     except PyOrientConnectionException:
         click.echo('Error al intentar conectarse a OrientDB', err=True)
