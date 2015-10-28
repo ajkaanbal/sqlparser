@@ -25,14 +25,22 @@ def is_subselect(parsed):
 
 def extract_from_part(parsed):
     from_seen = False
-    print(parsed.tokens)
     for item in parsed.tokens:
         if from_seen:
             if is_subselect(item):
                 for x in extract_from_part(item):
                     yield x
             elif item.ttype is Keyword:
-                raise StopIteration
+                keywords_whitelist = [
+                    'JOIN', 'LEFT JOIN', 'LEFT OUTER JOIN',
+                    'FULL OUTER JOIN', 'NATURAL JOIN',
+                    'CROSS JOIN', 'STRAIGHT JOIN',
+                    'INNER JOIN', 'LEFT INNER JOIN'
+                ]
+                if item.value.upper() not in keywords_whitelist:
+                    raise StopIteration
+                else:
+                    from_seen = True
             else:
                 yield item
         elif item.ttype is Keyword and item.value.upper() == 'FROM':
@@ -68,13 +76,14 @@ def extract_tables():
     return list(extract_table_identifiers(stream))
 
 
-class SQLParse():
+class SQLParser():
     def __init__(self, sql_query):
         self.sql_query = sql_query
         self.stream = extract_from_part(sqlparse.parse(self.sql_query)[0])
 
-    def uses_database(self):
-        return list(extract_database_identifiers(self.stream))
+    def get_databases(self):
+        databases = list(extract_database_identifiers(self.stream))
+        return [d for d in databases if d is not None]
 
 
 if __name__ == '__main__':
