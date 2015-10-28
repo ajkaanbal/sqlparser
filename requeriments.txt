@@ -1,0 +1,14 @@
+click==5.1
+colorama==0.3.3
+decorator==4.0.4
+path.py==8.1.2
+pathlib==1.0.1
+pexpect==4.0.1
+pickleshare==0.5
+ptyprocess==0.5
+py==1.4.30
+pyorient==1.4.4
+pytest==2.8.2
+simplegeneric==0.8.1
+sqlparse==0.1.18
+traitlets==4.0.0
