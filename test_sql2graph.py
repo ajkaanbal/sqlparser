@@ -128,18 +128,18 @@ def test_get_multiple_fields_from_join_with_alias():
 
     assert set(actual) == set(expected)
 
-#
-# def test_get_fields_by_table():
-#     sql_query = """SELECT e.last_name,
-#         e.department_id,
-#         d.department_name
-#         FROM   employees e
-#         LEFT OUTER JOIN department d
-#             ON ( e.department_id = d.department_id ); """
-#
-#     parser = SQLParser(sql_query)
-#     actual = parser.get_fields_from('employees')
-#     expected = ['last_name', 'department_name']
-#
-#     assert set(actual) == set(expected)
-#
+
+def test_get_fields_by_table():
+    sql_query = """SELECT e.last_name,
+        e.department_id,
+        d.department_name
+        FROM   employees e
+        LEFT OUTER JOIN department d
+            ON ( e.department_id = d.department_id ); """
+
+    parser = SQLParser(sql_query)
+    actual = parser.get_fields_from(u'employees')
+    expected = ['last_name', 'department_id']
+
+    assert set(actual) == set(expected)
+
