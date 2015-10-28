@@ -26,6 +26,7 @@ def is_subselect(parsed):
 def extract_from_part(parsed):
     from_seen = False
     for item in parsed.tokens:
+        import pprint; pprint.pprint(item)
         if from_seen:
             if is_subselect(item):
                 for x in extract_from_part(item):
@@ -51,11 +52,9 @@ def extract_table_identifiers(token_stream):
     for item in token_stream:
         if isinstance(item, IdentifierList):
             for identifier in item.get_identifiers():
-                yield identifier.get_name()
+                yield identifier.get_name() if not identifier.has_alias() else identifier.get_real_name()
         elif isinstance(item, Identifier):
-            yield item.get_name()
-        # It's a bug to check for Keyword here, but in the example
-        # above some tables names are identified as keywords...
+            yield item.get_name() if not item.has_alias() else item.get_real_name()
         elif item.ttype is Keyword:
             yield item.value
 
@@ -71,20 +70,16 @@ def extract_database_identifiers(token_stream):
             yield item.value
 
 
-def extract_tables():
-    stream = extract_from_part(sqlparse.parse(sql)[0])
-    return list(extract_table_identifiers(stream))
-
-
 class SQLParser():
     def __init__(self, sql_query):
         self.sql_query = sql_query
-        self.stream = extract_from_part(sqlparse.parse(self.sql_query)[0])
 
     def get_databases(self):
-        databases = list(extract_database_identifiers(self.stream))
+        stream = extract_from_part(sqlparse.parse(self.sql_query)[0])
+        databases = list(extract_database_identifiers(stream))
         return [d for d in databases if d is not None]
 
-
-if __name__ == '__main__':
-    print('Tables: %s' % ', '.join(extract_tables()))
+    def get_tables(self):
+        stream = extract_from_part(sqlparse.parse(self.sql_query)[0])
+        tables = list(extract_table_identifiers(stream))
+        return [t for t in tables if t is not None]

@@ -26,13 +26,13 @@ def test_get_multiple_databases():
         FROM database_2.table_2
         JOIN database_1.table_1
             ON (database_2.table_2.some_field = database_1.table_1.some_other_field)
-        WHERE database_1.table_1.data_1 LIKE database_2.table_2.data_2"""
+        WHERE database_1.table_1.data_1 LIKE database_2.table_2.data_2;"""
 
     parser = SQLParser(sql_query)
     actual = parser.get_databases()
     expected = ['database_2', 'database_1']
 
-    assert actual == expected
+    assert set(actual) == set(expected)
 
 
 def test_get_multiple_databases_on_complex_query():
@@ -42,10 +42,49 @@ def test_get_multiple_databases_on_complex_query():
         FROM
         mydatabase1.tblUsers
         INNER JOIN mydatabase2.tblUsers
-           ON mydatabase1.tblUsers.UserID = mydatabase2.tblUsers.UserID"""
+           ON mydatabase1.tblUsers.UserID = mydatabase2.tblUsers.UserID;"""
 
     parser = SQLParser(sql_query)
     actual = parser.get_databases()
     expected = ['mydatabase1', 'mydatabase2']
 
+    assert set(actual) == set(expected)
+
+
+def test_get_single_table():
+    sql_query = 'select * from tablita;'
+
+    parser = SQLParser(sql_query)
+    actual = parser.get_tables()
+    expected = ['tablita']
+
     assert actual == expected
+
+
+def test_get_tables_with_alias():
+    sql_query = """SELECT e.last_name,
+        e.department_id,
+        d.department_name
+        FROM   employees e
+        LEFT OUTER JOIN department d
+            ON ( e.department_id = d.department_id ); """
+
+    parser = SQLParser(sql_query)
+    actual = parser.get_tables()
+    expected = ['employees', 'department']
+
+    assert set(actual) == set(expected)
+
+def test_get_tables_from_multiple_databases():
+    sql_query = """SELECT *
+        FROM database_2.table_2
+        JOIN database_1.table_1
+            ON (database_2.table_2.some_field = database_1.table_1.some_other_field)
+        WHERE database_1.table_1.data_1 LIKE database_2.table_2.data_2;"""
+
+    parser = SQLParser(sql_query)
+    actual = parser.get_tables()
+    expected = ['table_1', 'table_2']
+
+    assert set(actual) == set(expected)
+
