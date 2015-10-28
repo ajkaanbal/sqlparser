@@ -163,10 +163,11 @@ class GraphDB():
 
 
 @click.command()
-@click.option('--port', default=2424, help="Puerto para conectarse a OrientDB")
-@click.option('--user', help="Nombre de usuario de acceso a OrientDB", required=True)
-@click.option('--password', prompt="Contraseña OrientDB", hide_input=True)
-@click.option('--database', default="sql2graph", help="Nombre de base de datos en orientdb")
+@click.option('--host', default='127.0.0.1', help='OrientDB server')
+@click.option('--port', default=2424, help='Puerto para conectarse a OrientDB')
+@click.option('--user', help='Nombre de usuario de acceso a OrientDB', required=True)
+@click.option('--password', prompt='Contraseña OrientDB', hide_input=True)
+@click.option('--database', default='sql2graph', help='Nombre de base de datos en orientdb')
 def init(host='127.0.0.1', port=2424, user=None, password=None, database='sql2graph'):
     click.echo('Contectando a %s@%s/%s' % (user,host,database))
 
