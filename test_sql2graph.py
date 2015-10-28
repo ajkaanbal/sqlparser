@@ -75,6 +75,7 @@ def test_get_tables_with_alias():
 
     assert set(actual) == set(expected)
 
+
 def test_get_tables_from_multiple_databases():
     sql_query = """SELECT *
         FROM database_2.table_2
@@ -88,3 +89,57 @@ def test_get_tables_from_multiple_databases():
 
     assert set(actual) == set(expected)
 
+
+def test_get_single_field():
+    sql_query = 'select title from post;'
+
+    parser = SQLParser(sql_query)
+    actual = parser.get_fields()
+    expected = ['title']
+
+    assert actual == expected
+
+
+def test_get_multiple_fields_with_alias():
+
+    sql_query = """SELECT child_entry,asdf AS inode, creation
+              FROM links
+              WHERE parent_dir == :parent_dir AND name == :name
+              LIMIT 1"""
+
+    parser = SQLParser(sql_query)
+    actual = parser.get_fields()
+    expected = ['child_entry', 'asdf', 'creation']
+
+    assert set(actual) == set(expected)
+
+
+def test_get_multiple_fields_from_join_with_alias():
+    sql_query = """SELECT e.last_name,
+        e.department_id,
+        d.department_name
+        FROM   employees e
+        LEFT OUTER JOIN department d
+            ON ( e.department_id = d.department_id ); """
+
+    parser = SQLParser(sql_query)
+    actual = parser.get_fields()
+    expected = ['last_name', 'department_id', 'department_name']
+
+    assert set(actual) == set(expected)
+
+
+# def test_get_fields_by_table():
+#     sql_query = """SELECT e.last_name,
+#         e.department_id,
+#         d.department_name
+#         FROM   employees e
+#         LEFT OUTER JOIN department d
+#             ON ( e.department_id = d.department_id ); """
+#
+#     parser = SQLParser(sql_query)
+#     actual = parser.get_fields_from('employees')
+#     expected = ['last_name', 'department_name']
+#
+#     assert set(actual) == set(expected)
+#

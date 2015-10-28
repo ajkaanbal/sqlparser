@@ -1,17 +1,9 @@
-# This example illustrates how to extract table names from nested
-# SELECT statements.
-
 # See:
 # http://groups.google.com/group/sqlparse/browse_thread/thread/b0bd9a022e9d4895
 
-sql = """
-select K.a,K.b from (select H.b from (select G.c from (select F.d from
-(select E.e from A, B, C, D, E), F), G), H), I, J, K order by 1,2;
-"""
-
-import sqlparse
 from sqlparse.sql import IdentifierList, Identifier
-from sqlparse.tokens import Keyword, DML
+from sqlparse import parse
+from sqlparse.tokens import (Comment, Keyword, Name, DML)
 
 
 def is_subselect(parsed):
@@ -26,7 +18,6 @@ def is_subselect(parsed):
 def extract_from_part(parsed):
     from_seen = False
     for item in parsed.tokens:
-        import pprint; pprint.pprint(item)
         if from_seen:
             if is_subselect(item):
                 for x in extract_from_part(item):
@@ -70,16 +61,71 @@ def extract_database_identifiers(token_stream):
             yield item.value
 
 
+def extract_tokens(token_stream):
+
+    for item in token_stream:
+        if isinstance(item, IdentifierList):
+            for identifier in item.get_identifiers():
+                yield identifier
+        else:
+            yield item
+
+
+def extract_field_identifiers(token_stream):
+    mode = 0
+    oldValue = ""
+
+    for item in token_stream:
+        token_type = item.ttype
+        value = item.value
+        # print(token_type)
+        # print(value)
+        # Ignore comments
+        if token_type in Comment:
+            continue
+
+        # We have not detected a SELECT statement
+        if mode == 0:
+            if token_type in Keyword and value.upper() == 'SELECT':
+                mode = 1
+
+        # We have detected a SELECT statement
+        elif mode == 1:
+
+            if value.upper() == 'FROM':
+                mode = 3    # Columns have been checked
+
+            elif value.upper() == 'AS':
+                mode = 2
+
+            elif isinstance(item, Identifier):
+                yield item.get_name() if not item.has_alias() else item.get_real_name()
+                oldValue = item.get_name()
+
+        # We are processing an AS keyword
+        elif mode == 2:
+            # We check also for Keywords because a bug in SQLParse
+            if token_type == Name or token_type == Keyword:
+                yield oldValue
+                mode = 1
+
+
 class SQLParser():
     def __init__(self, sql_query):
         self.sql_query = sql_query
 
     def get_databases(self):
-        stream = extract_from_part(sqlparse.parse(self.sql_query)[0])
+        stream = extract_from_part(parse(self.sql_query)[0])
         databases = list(extract_database_identifiers(stream))
         return [d for d in databases if d is not None]
 
     def get_tables(self):
-        stream = extract_from_part(sqlparse.parse(self.sql_query)[0])
+        stream = extract_from_part(parse(self.sql_query)[0])
         tables = list(extract_table_identifiers(stream))
         return [t for t in tables if t is not None]
+
+    def get_fields(self):
+        stream = extract_tokens(parse(self.sql_query)[0].tokens)
+        columns = extract_field_identifiers(stream)
+        return list(columns)
+
