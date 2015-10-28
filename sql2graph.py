@@ -43,9 +43,9 @@ def extract_table_identifiers(token_stream):
     for item in token_stream:
         if isinstance(item, IdentifierList):
             for identifier in item.get_identifiers():
-                yield identifier.get_name() if not identifier.has_alias() else identifier.get_real_name()
+                yield (identifier.get_real_name(), identifier.get_alias())
         elif isinstance(item, Identifier):
-            yield item.get_name() if not item.has_alias() else item.get_real_name()
+            yield (item.get_real_name(), item.get_alias())
         elif item.ttype is Keyword:
             yield item.value
 
@@ -71,7 +71,7 @@ def extract_tokens(token_stream):
             yield item
 
 
-def extract_field_identifiers(token_stream):
+def extract_field_identifiers(token_stream, table_name = None):
     mode = 0
     oldValue = ""
 
@@ -99,6 +99,8 @@ def extract_field_identifiers(token_stream):
                 mode = 2
 
             elif isinstance(item, Identifier):
+                if(table_name):
+                    print(item.get_parent_name())
                 yield item.get_name() if not item.has_alias() else item.get_real_name()
                 oldValue = item.get_name()
 
@@ -124,8 +126,11 @@ class SQLParser():
         tables = list(extract_table_identifiers(stream))
         return [t for t in tables if t is not None]
 
-    def get_fields(self):
+    def get_fields(self, table_name=None):
         stream = extract_tokens(parse(self.sql_query)[0].tokens)
-        columns = extract_field_identifiers(stream)
+        columns = extract_field_identifiers(stream, table_name)
         return list(columns)
+
+    def get_fields_from(self, table_name):
+        return self.get_fields(table_name)
 

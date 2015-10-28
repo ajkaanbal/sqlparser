@@ -56,7 +56,7 @@ def test_get_single_table():
 
     parser = SQLParser(sql_query)
     actual = parser.get_tables()
-    expected = ['tablita']
+    expected = [('tablita', None)]
 
     assert actual == expected
 
@@ -71,7 +71,7 @@ def test_get_tables_with_alias():
 
     parser = SQLParser(sql_query)
     actual = parser.get_tables()
-    expected = ['employees', 'department']
+    expected = [('employees', 'e'), ('department', 'd')]
 
     assert set(actual) == set(expected)
 
@@ -85,7 +85,7 @@ def test_get_tables_from_multiple_databases():
 
     parser = SQLParser(sql_query)
     actual = parser.get_tables()
-    expected = ['table_1', 'table_2']
+    expected = [('table_1', None), ('table_2', None)]
 
     assert set(actual) == set(expected)
 
@@ -128,7 +128,7 @@ def test_get_multiple_fields_from_join_with_alias():
 
     assert set(actual) == set(expected)
 
-
+#
 # def test_get_fields_by_table():
 #     sql_query = """SELECT e.last_name,
 #         e.department_id,
