@@ -10,7 +10,8 @@ import click
 import pyorient
 from pyorient.exceptions import (
     PyOrientConnectionException,
-    PyOrientSecurityAccessException
+    PyOrientSecurityAccessException,
+    PyOrientSchemaException
 )
 
 
@@ -150,6 +151,8 @@ class SQLParser():
 class GraphDB():
 
     def __init__(self, host='127.0.0.1', port=2424, user=None, password=None, database='sql2graph'):
+        self.user = user
+        self.password = password
 
         self.client = pyorient.OrientDB(host, port)
         self.session_id = self.client.connect(user, password)
@@ -159,8 +162,48 @@ class GraphDB():
         return self.client.db_exists(self.database_name)
 
     def db_create(self):
-        self.client.db_create(self.database_name)
+        self.client.db_create(self.database_name, pyorient.DB_TYPE_GRAPH)
 
+    def db_create_class(self, class_name, class_super='V'):
+        try:
+            self.client.command('create class {0} extends {1}'.format(class_name, class_super))
+        except PyOrientSchemaException:
+            pass  # :
+
+    def initialize(self):
+        """Create Vertex and Edges if not exists
+            File has_query Query
+            Query uses_database Database
+            Query uses_table Table
+            Query uses_field Field
+            Table has_field Field
+            Database has_table Table
+        """
+
+        cluster_info = self.client.db_open(self.database_name, self.user, self.password)
+        # TODO: cluste_info tiene dataCluster para saber si las bases ya existen
+        vertex = [
+            'File',
+            'Database',
+            'Query',
+            'Table',
+            'Field'
+        ]
+        for v in vertex:
+            self.db_create_class(v)
+
+        print('Vertex {}'.format(vertex))
+        edges = [
+            'has_table',
+            'uses_database',
+            'uses_field',
+            'uses_table',
+            'has_field '
+        ]
+        for e in edges:
+            self.db_create_class(e, 'E')
+
+        print('Edges {}'.format(edges))
 
 @click.command()
 @click.option('--host', default='127.0.0.1', help='OrientDB server')
@@ -169,20 +212,21 @@ class GraphDB():
 @click.option('--password', prompt='Contraseña OrientDB', hide_input=True)
 @click.option('--database', default='sql2graph', help='Nombre de base de datos en orientdb')
 def init(host='127.0.0.1', port=2424, user=None, password=None, database='sql2graph'):
-    click.echo('Contectando a %s@%s/%s' % (user,host,database))
+    click.echo('Contectando a %s@%s/%s' % (user, host, database))
 
     try:
-        graphdb  = GraphDB(host=host, port=port, user=user, password=password, database=database)
+        graphdb = GraphDB(host=host, port=port, user=user, password=password, database=database)
         if not graphdb.db_exists():
             click.echo('No existe base de datos %s ' % database)
             if(click.confirm(u'¿Deseas crearla?')):
                 click.echo('Creando...')
-                graphdb.db_create();
+                graphdb.db_create()
             else:
                 click.echo('Bye.')
                 return
         # Base creada comenzar a procesar los querys
         click.echo('Procesando...')
+        graphdb.initialize()
 
     except PyOrientConnectionException:
         click.echo('Error al intentar conectarse a OrientDB', err=True)
