@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+
 from sqlparse.sql import IdentifierList, Identifier
 from sqlparse import parse
 from sqlparse.tokens import (Comment, Keyword, Name, DML)
@@ -13,6 +15,8 @@ from pyorient.exceptions import (
     PyOrientSecurityAccessException,
     PyOrientSchemaException
 )
+
+from pathlib import Path
 
 
 def is_subselect(parsed):
@@ -211,7 +215,8 @@ class GraphDB():
 @click.option('--user', help='Nombre de usuario de acceso a OrientDB', required=True)
 @click.option('--password', prompt='Contraseña OrientDB', hide_input=True)
 @click.option('--database', default='sql2graph', help='Nombre de base de datos en orientdb')
-def init(host='127.0.0.1', port=2424, user=None, password=None, database='sql2graph'):
+@click.option('--path', default='.', help='Carpeta con archivos sql')
+def init(host='127.0.0.1', port=2424, user=None, password=None, database='sql2graph', path='.'):
     click.echo('Contectando a %s@%s/%s' % (user, host, database))
 
     try:
@@ -226,7 +231,39 @@ def init(host='127.0.0.1', port=2424, user=None, password=None, database='sql2gr
                 return
         # Base creada comenzar a procesar los querys
         click.echo('Procesando...')
-        graphdb.initialize()
+        # graphdb.initialize()
+
+        click.echo('Leyendo archivos: ')
+        p = Path(path)
+
+        graph_objects = []
+        for f in p.glob('*.sql'):
+            graph_object = {'path': str(f.resolve())}
+            with f.open() as sqlFile:
+                # WARNING: Assume that files only have selects in one line
+                # and is a valid sql expression
+                graph_object['querys'] = []
+                for selectStatement in sqlFile:
+                    parser = SQLParser(selectStatement)
+                    databases = parser.get_databases()
+                    tables = parser.get_tables()
+                    fields = parser.get_fields()
+                    tables_with_fields = {}
+                    for table in tables:
+                        tables_with_fields[table] = parser.get_fields_from(table[0])
+
+                    query = {
+                        'query': selectStatement,
+                        'databases': databases,
+                        'tables': tables,
+                        'fields': fields,
+                        'tables_with_fields': tables_with_fields
+                    }
+                    graph_object['querys'].append(query)
+
+            graph_objects.append(graph_object)
+
+        print(graph_objects)
 
     except PyOrientConnectionException:
         click.echo('Error al intentar conectarse a OrientDB', err=True)
