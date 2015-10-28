@@ -1,25 +1,6 @@
 from sql2graph import SQLParser
 
 
-# def test_get_databases_names_in_simple_query():
-#     sql_query = 'select title from cms.post;'
-#     parsed = SQLParse(sql_query)
-#     assert parsed.uses_database() == ['cms']
-
-
-# def test_get_databases_names_in_complex_query():
-#     sql_query = """
-#         SELECT option_value
-#          FROM `database1`.`wp_options`
-#          WHERE option_name="active_plugins"
-#         UNION
-#         SELECT option_value
-#          FROM `database2`.`wp_options`
-#          WHERE option_name="active_plugins"
-#         """
-#     parsed = SQLParse(sql_query)
-#     assert parsed.uses_database() == ['database1', 'database2']
-
 def test_get_undefined_database():
     sql_query = 'select * from table_name;'
 
@@ -41,11 +22,15 @@ def test_get_single_database():
 
 
 def test_get_multiple_databases():
-    sql_query = 'select * from table_name;'
+    sql_query = """SELECT *
+        FROM database_2.table_2
+        JOIN database_1.table_1
+            ON (database_2.table_2.some_field = database_1.table_1.some_other_field)
+        WHERE database_1.table_1.data_1 LIKE database_2.table_2.data_2"""
 
     parser = SQLParser(sql_query)
     actual = parser.get_databases()
-    expected = []
+    expected = ['database_2', 'database_1']
 
     assert actual == expected
 
